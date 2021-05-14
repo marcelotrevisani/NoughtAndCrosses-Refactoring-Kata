@@ -1,104 +1,81 @@
 #!/usr/bin/env python3
+import itertools
 import sys
+from collections import deque
+from typing import Deque, List, Optional, Sequence
 
 
 def main():
     game = NoughtsAndCrosses()
 
-    print('Input a square from 1-9 to move.')
+    print("Input a square from 1-9 to move.")
 
     while not game.finished():
+        print(f"{game.turn} to play: ", end="")
+        sys.stdout.flush()
+
         try:
-            print(game.turn + ' to play: ', end='')
-            sys.stdout.flush()
-            action = sys.stdin.readline()
+            action = int(sys.stdin.readline())
+        except ValueError:
+            print("Invalid position")
+        else:
             game.move(action)
             game.display()
-        except KeyboardInterrupt:
-            return
-        except:
-            print('Invalid position')
 
     game.display_result()
 
 
 class NoughtsAndCrosses:
     def __init__(self):
-        self.turn = 'X'
-        self.position = [None, None, None, None, None, None, None, None, None]
+        self._turns: Deque = deque(("X", "O"))
+        self.position: List = [None] * 9
 
-    def move(self, action):
-        position = int(action)
+    @property
+    def turn(self) -> str:
+        return self._turns[0]
 
-        if self.position[position - 1]:
-            print('Square already occupied')
+    def move(self, action: int):
+        if self.position[action - 1]:
+            print("Square already occupied")
             return
 
-        self.position[position - 1] = self.turn
+        self.position[action - 1] = self._turns[0]
+        self._turns.rotate()
 
-        if self.turn == 'O':
-            self.turn = 'X' 
-        else:
-            self.turn = 'O'
+    def finished(self) -> bool:
+        return self.winner() or all(self.position)
 
-    def finished(self):
-        if self.winner():
-            return True
+    def winner(self) -> Optional[str]:
+        for pos in range(3):
+            if self._has_winner(pos):
+                return self.position[pos]
 
-        for square in self.position:
-            if not square:
-                return False
-        return True
+    def _has_winner(self, pos: int) -> bool:
+        return (
+            self._is_line_equal([pos * 3 + j for j in range(3)])
+            or self._is_line_equal([pos + j * 3 for j in range(3)])
+            or self._is_line_equal((0, 4, 8))
+            or self._is_line_equal((2, 4, 6))
+        )
 
-    def winner(self):
-        for player in ['X', 'O']:
-            # Rows
-            for i in range(3):
-                win = True
-                for j in range(3):
-                    if self.position[i*3+j] != player:
-                        win = False
-                        break
-                if win:
-                    return player
-
-            # Columns
-            for i in range(3):
-                win = True
-                for j in range(3):
-                    if self.position[i+j*3] != player:
-                        win = False
-                        break
-                if win:
-                    return player
-
-            # Diagonals
-            if (self.position[0] == player 
-                    and self.position[4] == player 
-                    and self.position[8] == player):
-                return player
-            if (self.position[2] == player 
-                    and self.position[4] == player 
-                    and self.position[6] == player):
-                return player
-
-        return None
+    def _is_line_equal(self, line_pos: Sequence[int]) -> bool:
+        set_items = {self.position[i] for i in line_pos}
+        return len(set_items) == 1 and set_items != {None}
 
     def display(self):
         for i in range(3):
             for j in range(3):
-                print(self.position[i*3 + j] or ' ', end='')
+                print(self.position[i * 3 + j] or " ", end="")
                 if j < 2:
-                    print('|', end='')
+                    print("|", end="")
             print()
 
     def display_result(self):
-        winner = self.winner()
-        if winner:
-            print(winner + ' wins!')
-        else:
-            print('Draw')
+        print(f"{self.winner()} wins!" if self.winner() else "Draw")
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)
